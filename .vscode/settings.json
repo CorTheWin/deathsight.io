@@ -1,0 +1,4 @@
+{
+    "python.defaultInterpreterPath": "/Library/frameworks/python.framework:/Users/samsobel/Library/Python/3.12/bin:/usr/local/bin/openssl:/Users/samsobel/Documents/deathsight/bin",
+    "python.terminal.activateEnvInCurrentTerminal": true
+}
