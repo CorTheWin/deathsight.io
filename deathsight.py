@@ -49,14 +49,15 @@ def writePlayerData(df):
 
 def getNames(df):
     p = re.compile("^(\S+) was slain by (\S+)\.$")
-    kn = []
-    sn = []
+    n = []
     for i in df['description']:
         r = p.fullmatch(i)
         if r:
-            sn.append(r.group(1))
-            kn.append(r.group(2))
-    return sn, kn
+            if not (r.group(1) in n) & (r.group(1) != "misadventure"):
+                n.append(r.group(1))
+            if not (r.group(2) in n) & (r.group(2) != 'misadventure'):
+                n.append(r.group(2))
+    return n
 
 
 def main():
@@ -68,14 +69,22 @@ def main():
     d = pd.DataFrame(data=getMoreData())
     d.columns = od.columns.tolist()
     output = pd.concat([od, d]).drop_duplicates()
-    slain, killers = getNames(output)
-    players = storePlayerData(ps, slain)
-    writePlayerData(players)
-    print(players)
+    #slain, killers = getNames(output)
+    #players = storePlayerData(ps, slain)
+    #players = storePlayerData(players, killers)
+    
+    #print(players)
     #print(slain)
     #print(killers)
-
+    lastID = od['id'].iloc[-1]
+    subsection = output.loc[output['id'] > lastID]
+    names = getNames(subsection)
+    #names = [*slain]
+    players = storePlayerData(ps, names)
+    print(players)
+    #print(lastID)
     print(output)
+    writePlayerData(players)
     output.to_json("pk_data.json",orient="records",mode="w")
     
 
