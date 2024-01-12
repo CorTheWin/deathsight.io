@@ -3,6 +3,7 @@ import json
 import pandas as pd
 from dash import Dash, html, dcc, callback, Output, Input
 import plotly.express as px
+import re
 
 def getMoreData(): #pull the data from api
     re = requests.get("https://api.achaea.com/gamefeed.json?limit=10000")
@@ -14,14 +15,7 @@ def getMoreData(): #pull the data from api
 def clearAllButPK(data): #remove non-death events
     return [x for x in data if x['caption'] == 'Player Death']
 
-def getLastID(data): #what's the last ID we have already?
-    val = 0
-    for i in data:
-        if i['id'] > val:
-            val = i['id']
-    return val
-
-def saveDataToFile(data):
+def saveDataToFile(data): #storage 
     with open("pk_data.json", "w") as outfile:
         json.dump(data, outfile)
 
@@ -30,15 +24,57 @@ def getCurrentData():
     o = json.loads(d.read())
     return o
 
+def getCurrentPlayerData():
+    d = open("player_data.json", "r")
+    o = json.loads(d.read())
+    return o
+
+def getPlayerData(name):
+    re = requests.get("https://api.achaea.com/characters/" + name + ".json")
+    n = json.loads(re.text)
+    return n
+
+def storePlayerData(df, name_list):
+    d_l = []
+    checked_names = []
+    for name in name_list: #eliminate duplicate calls
+        if not (name in checked_names):
+            d_l.append(getPlayerData(name))
+            checked_names.append(name)
+    tempDf = pd.DataFrame(data=d_l)
+    return pd.concat([df, tempDf]).drop_duplicates(subset='name',keep='last')
+
+def writePlayerData(df):
+    df.to_json("player_data.json",orient="records",mode="w")
+
+def getNames(df):
+    p = re.compile("^(\S+) was slain by (\S+)\.$")
+    kn = []
+    sn = []
+    for i in df['description']:
+        r = p.fullmatch(i)
+        if r:
+            sn.append(r.group(1))
+            kn.append(r.group(2))
+    return sn, kn
+
+
 def main():
     #saveDataToFile(getMoreData())
     oldData = getCurrentData()
-    print(type(oldData))
     od = pd.DataFrame(oldData)
     #print(od)
+    ps = pd.DataFrame(getCurrentPlayerData())
     d = pd.DataFrame(data=getMoreData())
     d.columns = od.columns.tolist()
     output = pd.concat([od, d]).drop_duplicates()
+    slain, killers = getNames(output)
+    players = storePlayerData(ps, slain)
+    writePlayerData(players)
+    print(players)
+    #print(slain)
+    #print(killers)
+
     print(output)
     output.to_json("pk_data.json",orient="records",mode="w")
     
